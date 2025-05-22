@@ -95,3 +95,46 @@ eureka:
     serviceUrl:
       defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
 ```
+> Subir al `Github` y correr el programa.
+## Gateway
+### Descripción
+Recibira las solicitudes y se conectará con el necesario.
+### Creación
+- Spring Boot
+- Nombra: ms-gateway-service
+- Dependencias:
+    - Config Client
+    - Gateway
+    - Eureka Discovery Client
+### Detalles
+> Quitar `-mvc` de la dependencia `Gateway`
+> Código del YML
+```yml
+spring:
+  application:
+    name: ms-gateway-service
+  profiles:
+    active: development
+  config:
+    import: optional:configserver:http://root:123456@localhost:7070
+```
+> Config Data crear `ms-gateway-service.yml`
+```yml
+server:
+  port: 8085
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8090/eureka
+  instance:
+    hostname: localhost
+spring:
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enable: true
+      routes:
+```
+> Subir al Github y correr el programa.
