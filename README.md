@@ -678,7 +678,7 @@ eureka:
   instance:
     instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
 ```
-> Se añade al `ms-gateway-service.yml` para saber que apis puede conectar
+> Se añade al `ms-gateway-service.yml` del `Config Data` para saber que apis puede conectar
 ```yml
 spring:
   cloud:
@@ -691,5 +691,137 @@ spring:
           uri: lb://ms-[nombre]-service
           predicates:
             - Path=/[nombre]/**
+```
+> Subir al `Github` y correr el programa.
+### Auth Filter
+#### Desarrollo
+> Añadir esta Dependencia a `ms-gateway-service`
+```xml
+<dependency>
+  <groupId>org.projectlombok</groupId>
+  <artifactId>lombok</artifactId>
+  <optional>true</optional>
+</dependency>
+```
+> Añadir esto lo faltante en el `pom.xml`
+```xml
+<build>
+  <plugins>
+    <plugin>
+      <groupId>org.apache.maven.plugins</groupId>
+      <artifactId>maven-compiler-plugin</artifactId>
+      <configuration>
+        <annotationProcessorPaths>
+          <path>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+          </path>
+        </annotationProcessorPaths>
+      </configuration>
+     </plugin>
+    <plugin>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-maven-plugin</artifactId>
+      <configuration>
+        <excludes>
+          <exclude>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+          </exclude>
+        </excludes>
+      </configuration>
+    </plugin>
+  </plugins>
+</build>
+```
+> Estructura de Gateway
+```yml
+config:
+  AuthFilter.java
+  WebClientConfig.java
+dto:
+  TokenDto.java
+```
+> `config: AuthFilter.java`
+```java
+package com.example.msgatewayservice.config;
+
+import com.example.msgatewayservice.dto.TokenDto;
+import org.springframework.cloud.gateway.filter.GatewayFilter;
+import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Mono;
+
+@Component
+public class AuthFilter extends AbstractGatewayFilterFactory<AuthFilter.Config> {
+    private WebClient.Builder webClient;
+
+    public AuthFilter(WebClient.Builder webClient) {
+        super(Config.class);
+        this.webClient = webClient;
+    }
+
+    @Override
+    public GatewayFilter apply(Config config) {
+        return (((exchange, chain) -> {
+            if (!exchange.getRequest().getHeaders().containsKey(HttpHeaders.AUTHORIZATION))
+                return onError(exchange, HttpStatus.BAD_REQUEST);
+            String tokenHeader = exchange.getRequest().getHeaders().get(HttpHeaders.AUTHORIZATION).get(0);
+            String[] chunks = tokenHeader.split(" ");
+            if (chunks.length != 2 || !chunks[0].equals("Bearer"))
+                return onError(exchange, HttpStatus.BAD_REQUEST);
+            return webClient.build()
+                    .post()
+                    .uri("http://ms-auth-service/auth/validate?token=" + chunks[1])
+                    .retrieve().bodyToMono(TokenDto.class)
+                    .map(t -> {
+                        t.getToken();
+                        return exchange;
+                    }).flatMap(chain::filter);
+        }));
+    }
+
+    public Mono<Void> onError(ServerWebExchange exchange, HttpStatus status) {
+        ServerHttpResponse response = exchange.getResponse();
+        response.setStatusCode(status);
+        return ((ServerHttpResponse) response).setComplete();
+    }
+
+    public static class Config {
+    }
+}
+```
+> `config: WebClientConfig.java`
+```java
+package com.example.msgatewayservice.config;
+
+import org.springframework.cloud.client.loadbalancer.LoadBalanced;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.reactive.function.client.WebClient;
+
+@Configuration
+public class WebClientConfig {
+    @Bean
+    @LoadBalanced
+    public WebClient.Builder builder() {
+        return WebClient.builder();
+    }
+}
+```
+> Se añade al `ms-gateway-service.yml` del `Config Data` para saber a que se le aplica el filtro
+```yml
+- id: ms-[nombre]-service
+  uri: lb://ms-[nombre]-service
+  predicates:
+    - Path=/[nombre[/**
+  # Esto
+  filters:
+    - AuthFilter
 ```
 > Subir al `Github` y correr el programa.
