@@ -640,3 +640,56 @@ jwt:
   secret: clave_secreta_en_base_64_con_32_bits_porque_es_el_minimo
 ```
 > Subir al `Github` y correr el programa.
+### Load Balancer
+#### Descripción
+Balanceo de Carga, sirve para distribuir el trafico de red entre multiples servidores.
+#### Desarrollo
+> Cambiar a estas cosas en los diferentes archivos del `Config Data`
+> `ms-auth-service.yml`
+```yml
+server:
+  port: ${PORT:${SERVERS_PORT:0}}
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_URI:http://localhost:8090/eureka}
+  instance:
+    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
+```
+> `ms-[nombre]-service.yml`
+```yml
+server:
+  port: ${PORT:${SERVERS_PORT:0}}
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_URI:http://localhost:8090/eureka}
+  instance:
+    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
+```
+> `ms-gateway-service.yml`
+```yml
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_URI:http://localhost:8090/eureka}
+  instance:
+    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
+```
+> Se añade al `ms-gateway-service.yml` para saber que apis puede conectar
+```yml
+spring:
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enable: true
+      routes:
+        - id: ms-[nombre]-service
+          uri: lb://ms-[nombre]-service
+          predicates:
+            - Path=/[nombre]/**
+```
+> Subir al `Github` y correr el programa.
