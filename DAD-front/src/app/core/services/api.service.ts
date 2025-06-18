@@ -14,4 +14,8 @@ export class ApiService {
   crearUsuario(data: any): Observable<any> {
     return this.http.post('usuarios', data);
   }
+
+  getProductoById(productoId: number): Observable<any> {
+    return this.http.get<any>(`${resources.producto.producto}/${productoId}`);
+  }
 }
