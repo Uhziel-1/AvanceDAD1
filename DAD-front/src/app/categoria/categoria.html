@@ -1,1 +1,10 @@
-<p>categoria works!</p>
+<p>category works!</p>
+<div class="overflow-x-auto">
+  <ul>
+    @for ( elemento of categorias;track elemento.id) {
+      <li>{{ elemento.nombre }}</li>
+    } @empty {
+      <li>No hay elementos disponibles.</li>
+    }
+  </ul>
+</div>
